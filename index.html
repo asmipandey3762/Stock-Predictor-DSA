@@ -1,0 +1,230 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Price Prediction System</title>
+  <style>
+    :root {
+      --primary: #19376D;
+      --secondary: #576CBC;
+      --accent: #A5D7E8;
+      --background: #F8F8F8;
+      --card-bg: #fff;
+      --shadow: 0 4px 16px rgba(25, 55, 109, 0.08);
+      --radius: 16px;
+      --text-dark: #11224D;
+      --text-light: #fff;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--background);
+      color: var(--text-dark);
+      line-height: 1.6;
+    }
+    .navbar {
+      background: var(--primary);
+      color: var(--text-light);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      box-shadow: var(--shadow);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    /* Statistic Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px) scale(1.025);
+      box-shadow: 0 8px 24px rgba(25, 55, 109, 0.16);
+    }
+    .stat-label {
+      font-size: 1.05rem;
+      color: var(--secondary);
+      margin-bottom: 0.5rem;
+    }
+    .stat-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    /* Features */
+    .section-title {
+      font-size: 1.3rem;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 1rem;
+      margin-top: 2rem;
+      text-align: left;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 2.5rem;
+    }
+    .feature-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.2rem 0.9rem;
+      text-align: center;
+      font-size: 1rem;
+      color: var(--primary);
+      font-weight: 500;
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+    .feature-card:hover {
+      box-shadow: 0 8px 24px rgba(25, 55, 109, 0.12);
+      transform: translateY(-2px) scale(1.02);
+    }
+    /* Actions */
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      justify-content: center;
+      margin: 2.5rem 0;
+    }
+    .action-btn {
+      background: var(--secondary);
+      color: var(--text-light);
+      border: none;
+      border-radius: var(--radius);
+      padding: 1.1rem 2.2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: background 0.18s, transform 0.14s, box-shadow 0.15s;
+      outline: none;
+      margin-bottom: 0.3rem;
+    }
+    .action-btn:hover, .action-btn:focus {
+      background: var(--primary);
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 8px 24px rgba(25, 55, 109, 0.12);
+    }
+    /* Footer */
+    footer {
+      background: var(--primary);
+      color: var(--text-light);
+      text-align: center;
+      padding: 1rem 0;
+      font-size: 1rem;
+      border-radius: var(--radius) var(--radius) 0 0;
+      margin-top: 2rem;
+      letter-spacing: 0.5px;
+    }
+    @media (max-width: 700px) {
+      .container {
+        padding: 1rem;
+      }
+      .stat-card, .feature-card {
+        padding: 1.2rem 0.7rem;
+      }
+      .actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .action-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    Stock Price Prediction System
+  </nav>
+  <div class="container">
+    <section class="hero">
+      <h1>Analyze Historical Stock Data &amp; Predict Future Trends</h1>
+    </section>
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Records</div>
+        <div class="stat-value">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Highest Price</div>
+        <div class="stat-value">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Lowest Price</div>
+        <div class="stat-value">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Prediction</div>
+        <div class="stat-value">—</div>
+      </div>
+    </section>
+    <div class="section-title">Features</div>
+    <section class="features-grid">
+      <div class="feature-card">CSV Loading</div>
+      <div class="feature-card">Search by Date</div>
+      <div class="feature-card">Moving Average</div>
+      <div class="feature-card">Statistics</div>
+      <div class="feature-card">Trend Analysis</div>
+      <div class="feature-card">Prediction</div>
+    </section>
+    <div class="section-title">Actions</div>
+    <section class="actions">
+      <button class="action-btn">Load CSV</button>
+      <button class="action-btn">View Statistics</button>
+      <button class="action-btn">Predict Price</button>
+      <button class="action-btn">Moving Average</button>
+      <button class="action-btn">Export Report</button>
+    </section>
+  </div>
+  <footer>
+    Developed as a DSA Mini Project using C++
+  </footer>
+  <script>
+    document.querySelectorAll('.action-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        alert('Frontend demo: Connect this page to your C++ backend.');
+      });
+    });
+  </script>
+</body>
+</html>

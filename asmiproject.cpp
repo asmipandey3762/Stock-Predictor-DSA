@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -10,6 +11,9 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <chrono>
+
+#include <crow.h>
 
 using namespace std;
 
@@ -52,6 +56,14 @@ private:
     vector<StockRecord> stocks;
     unordered_map<string, int> dateIndex;
 
+    // Print a formatted section header
+    void printHeader(const string& title) const
+    {
+        cout << "\n============================================================\n";
+        cout << "          " << title << "\n";
+        cout << "============================================================\n";
+    }
+
     // Helper: Trim whitespace from both ends of a string
     static string trim(const string& s)
     {
@@ -90,6 +102,95 @@ private:
 
 public:
     StockPredictionSystem() = default;
+
+    // ======== Web/Helper Methods for API integration ========
+    // Returns the number of stock records
+    int getRecordCount() const
+    {
+        return static_cast<int>(stocks.size());
+    }
+
+    // Returns all stock records (const ref)
+    const vector<StockRecord>& getAllRecords() const
+    {
+        return stocks;
+    }
+
+    // Returns the latest record (const ref)
+    const StockRecord& getLatestRecord() const
+    {
+        return stocks.back();
+    }
+
+    // Returns true if there is any stock data loaded
+    bool hasData() const
+    {
+        return !stocks.empty();
+    }
+
+    // Returns statistics as JSON string (same as displayStatistics, but as JSON)
+    string statisticsJSON() const
+    {
+        ostringstream oss;
+        if (stocks.empty())
+        {
+            oss << "{}";
+            return oss.str();
+        }
+        double highest = stocks[0].high;
+        double lowest = stocks[0].low;
+        double totalClose = 0.0;
+        for (const auto& s : stocks)
+        {
+            totalClose += s.close;
+            if (s.high > highest)
+                highest = s.high;
+            if (s.low < lowest)
+                lowest = s.low;
+        }
+        double avgClose = totalClose / stocks.size();
+        double overallReturn = (stocks.back().close - stocks.front().close) / stocks.front().close * 100.0;
+        oss << fixed << setprecision(2);
+        oss << "{";
+        oss << "\"records\":" << stocks.size() << ",";
+        oss << "\"highest\":" << highest << ",";
+        oss << "\"lowest\":" << lowest << ",";
+        oss << "\"average\":" << avgClose << ",";
+        oss << "\"return\":" << overallReturn;
+        oss << "}";
+        return oss.str();
+    }
+
+    // Returns prediction info as JSON string (same as predictNextDay, but as JSON)
+    string predictionJSON() const
+    {
+        ostringstream oss;
+        if (stocks.size() < 2)
+        {
+            oss << "{}";
+            return oss.str();
+        }
+        int days = min(10, (int)stocks.size());
+        double prediction = predictNextPriceLinearRegression(days);
+        double current = stocks.back().close;
+        double change = prediction - current;
+        double percent = (change/current) * 100;
+        string signal;
+        if(percent > 1.0)
+            signal = "BUY";
+        else if(percent < -1.0)
+            signal = "SELL";
+        else
+            signal = "HOLD";
+        oss << fixed << setprecision(2);
+        oss << "{";
+        oss << "\"current\":" << current << ",";
+        oss << "\"predicted\":" << prediction << ",";
+        oss << "\"changePercent\":" << percent << ",";
+        oss << "\"signal\":\"" << signal << "\"";
+        oss << "}";
+        return oss.str();
+    }
 
     // Load CSV file into stocks vector
     bool loadCSV(const string& filename)
@@ -149,7 +250,12 @@ public:
             stocks.push_back(rec);
         }
         file.close();
-        cout << "\nLoaded " << stocks.size() << " stock records successfully.\n";
+        if (!stocks.empty()) {
+            printHeader("DATASET LOADED");
+            cout << "Total Records : " << stocks.size() << endl;
+            cout << "First Date    : " << stocks.front().date << endl;
+            cout << "Last Date     : " << stocks.back().date << endl;
+        }
         return !stocks.empty();
     }
 
@@ -286,7 +392,7 @@ public:
         double avgVolume = static_cast<double>(totalVolume) / stocks.size();
         double overallReturn = (stocks.back().close - stocks.front().close) / stocks.front().close * 100.0;
         cout << fixed << setprecision(2);
-        cout << "\n========== STOCK STATISTICS ==========\n";
+        printHeader("STATISTICS");
         cout << "Total Records   : " << stocks.size() << endl;
         cout << "Highest Price   : Rs. " << highest << " on " << highDate << endl;
         cout << "Lowest Price    : Rs. " << lowest << " on " << lowDate << endl;
@@ -313,9 +419,7 @@ public:
         }
 
         count=min(count,(int)stocks.size());
-
-        cout<<"\nHighest Closing Prices\n";
-        cout<<"-----------------------------\n";
+        printHeader("HIGHEST CLOSING PRICES");
 
         for(int i=1;i<=count;i++)
         {
@@ -355,9 +459,7 @@ public:
         }
 
         count=min(count,(int)stocks.size());
-
-        cout<<"\nLowest Closing Prices\n";
-        cout<<"-----------------------------\n";
+        printHeader("LOWEST CLOSING PRICES");
 
         for(int i=1;i<=count;i++)
         {
@@ -388,9 +490,7 @@ public:
         }
 
         cout<<fixed<<setprecision(2);
-
-        cout<<"\nDaily Price Changes\n";
-        cout<<"----------------------------------------\n";
+        printHeader("DAILY PRICE CHANGES");
 
         for(int i=1;i<stocks.size();i++)
         {
@@ -472,57 +572,29 @@ public:
             cout << "\nNot enough data.\n";
             return;
         }
-
-        int days;
-
-        cout << "\nRecent Days for Prediction : ";
-        cin >> days;
-
-        if(days < 2)
-        {
-            cout << "Minimum 2 days required.\n";
-            return;
-        }
-
+        int days = min(10, (int)stocks.size());
         double prediction =
             predictNextPriceLinearRegression(days);
-
         double current =
             stocks.back().close;
-
         double change =
             prediction - current;
-
         double percent =
             (change/current) * 100;
-
         cout << fixed << setprecision(2);
-
-        cout << "\n========== PREDICTION ==========\n";
-
-        cout << "Last Date : "
-             << stocks.back().date << endl;
-
-        cout << "Current Close : Rs. "
-             << current << endl;
-
-        cout << "Predicted Close : Rs. "
-             << prediction << endl;
-
-        cout << "Expected Change : "
-             << percent << "%\n";
-
-        cout << "\nTrading Signal : ";
-
+        printHeader("PREDICTION");
+        cout << "Model: Linear Regression (Last " << days << " Days)\n";
+        cout << "Last Date       : " << stocks.back().date << endl;
+        cout << "Current Close   : Rs. " << current << endl;
+        cout << "Predicted Close : Rs. " << prediction << endl;
+        cout << "Expected Change : " << percent << "%\n";
+        cout << "\nTrading Signal  : ";
         if(percent > 1.0)
             cout << "BUY";
-
         else if(percent < -1.0)
             cout << "SELL";
-
         else
             cout << "HOLD";
-
         cout << endl;
     }
 
@@ -549,44 +621,20 @@ public:
         double latest = stocks.back().close;
 
         cout << fixed << setprecision(2);
-
-        cout << "\n========== TREND ==========\n";
-
-        cout << "Current Price : "
-             << latest << endl;
-
-        cout << "5 Day MA : "
-             << shortMA << endl;
-
-        cout << "10 Day MA : "
-             << longMA << endl;
-
-        if(shortMA > longMA &&
-           latest > shortMA)
-        {
+        printHeader("MARKET TREND");
+        cout << "Current Price : " << latest << endl;
+        cout << "5 Day MA      : " << shortMA << endl;
+        cout << "10 Day MA     : " << longMA << endl;
+        if(shortMA > longMA && latest > shortMA)
             cout << "Strong Bullish Trend\n";
-        }
-
         else if(shortMA > longMA)
-        {
             cout << "Bullish Trend\n";
-        }
-
-        else if(shortMA < longMA &&
-                latest < shortMA)
-        {
+        else if(shortMA < longMA && latest < shortMA)
             cout << "Strong Bearish Trend\n";
-        }
-
         else if(shortMA < longMA)
-        {
             cout << "Bearish Trend\n";
-        }
-
         else
-        {
             cout << "Sideways Trend\n";
-        }
     }
 
     //-------------------------------------------------
@@ -621,22 +669,13 @@ public:
         double sd = sqrt(variance);
 
         cout << fixed << setprecision(2);
-
-        cout << "\nMarket Volatility\n";
-        cout << "-------------------------\n";
-
-        cout << "Mean Closing Price : "
-             << mean << endl;
-
-        cout << "Standard Deviation : "
-             << sd << endl;
-
+        printHeader("MARKET VOLATILITY");
+        cout << "Mean Closing Price : " << mean << endl;
+        cout << "Standard Deviation : " << sd << endl;
         if(sd < 2)
             cout << "Very Stable Market\n";
-
         else if(sd < 5)
             cout << "Moderately Volatile\n";
-
         else
             cout << "Highly Volatile Market\n";
     }
@@ -676,14 +715,9 @@ public:
         }
 
         cout << fixed << setprecision(2);
-
-        cout << "\nBest Trading Day\n";
-        cout << bestDate
-             << "  +" << best << endl;
-
-        cout << "\nWorst Trading Day\n";
-        cout << worstDate
-             << "  " << worst << endl;
+        printHeader("BEST & WORST TRADING DAY");
+        cout << "Best Day   : " << bestDate << "  +" << best << endl;
+        cout << "Worst Day  : " << worstDate << "  " << worst << endl;
     }
 
     //-------------------------------------------------
@@ -716,14 +750,9 @@ public:
             maxGain = max(maxGain,gain);
             maxLoss = max(maxLoss,loss);
         }
-
-        cout << "\nLongest Gain Streak : "
-             << maxGain
-             << " Days\n";
-
-        cout << "Longest Loss Streak : "
-             << maxLoss
-             << " Days\n";
+        printHeader("CONSECUTIVE TREND ANALYSIS");
+        cout << "Longest Gain Streak : " << maxGain << " Days\n";
+        cout << "Longest Loss Streak : " << maxLoss << " Days\n";
     }
     //-------------------------------------------------
     // Sort by Closing Price (Descending)
@@ -745,9 +774,7 @@ public:
         {
             return a.close>b.close;
         });
-
-        cout<<"\n========== SORTED BY CLOSE ==========\n";
-
+        printHeader("SORTED BY CLOSE");
         for(auto &s:temp)
         {
             cout<<left
@@ -774,9 +801,7 @@ public:
         {
             return a.volume>b.volume;
         });
-
-        cout<<"\n========== SORTED BY VOLUME ==========\n";
-
+        printHeader("SORTED BY VOLUME");
         for(auto &s:temp)
         {
             cout<<left
@@ -802,13 +827,10 @@ public:
             if(s.volume>best.volume)
                 best=s;
         }
-
-        cout<<"\nHighest Volume Day\n";
-        cout<<"-----------------------------\n";
-
-        cout<<"Date : "<<best.date<<endl;
+        printHeader("HIGHEST VOLUME DAY");
+        cout<<"Date   : "<<best.date<<endl;
         cout<<"Volume : "<<best.volume<<endl;
-        cout<<"Close : "<<best.close<<endl;
+        cout<<"Close  : "<<best.close<<endl;
     }
 
     //-------------------------------------------------
@@ -827,13 +849,10 @@ public:
             if(s.volume<low.volume)
                 low=s;
         }
-
-        cout<<"\nLowest Volume Day\n";
-        cout<<"-----------------------------\n";
-
-        cout<<"Date : "<<low.date<<endl;
+        printHeader("LOWEST VOLUME DAY");
+        cout<<"Date   : "<<low.date<<endl;
         cout<<"Volume : "<<low.volume<<endl;
-        cout<<"Close : "<<low.close<<endl;
+        cout<<"Close  : "<<low.close<<endl;
     }
 
     //-------------------------------------------------
@@ -852,9 +871,7 @@ public:
 
             pq.push({gain,stocks[i].date});
         }
-
-        cout<<"\nTop 5 Gainers\n";
-        cout<<"----------------------------\n";
+        printHeader("TOP 5 GAINERS");
 
         for(int i=1;i<=5 && !pq.empty();i++)
         {
@@ -893,9 +910,7 @@ public:
 
             pq.push({loss,stocks[i].date});
         }
-
-        cout<<"\nTop 5 Losers\n";
-        cout<<"----------------------------\n";
+        printHeader("TOP 5 LOSERS");
 
         for(int i=1;i<=5 && !pq.empty();i++)
         {
@@ -928,28 +943,20 @@ public:
 
         double score=
         ((prediction-current)/current)*100;
-
-        cout<<"\nRecommendation Score\n";
-        cout<<"---------------------------\n";
-
+        printHeader("RECOMMENDATION SCORE");
         cout<<"Score : "
             <<fixed
             <<setprecision(2)
             <<score
             <<"%\n";
-
         if(score>3)
             cout<<"★★★★★ Strong Buy\n";
-
         else if(score>1)
             cout<<"★★★★ Buy\n";
-
         else if(score>-1)
             cout<<"★★★ Hold\n";
-
         else if(score>-3)
             cout<<"★★ Sell\n";
-
         else
             cout<<"★ Strong Sell\n";
     }
@@ -991,8 +998,8 @@ public:
             <<endl;
 
         fout.close();
-
-        cout<<"\nReport Saved Successfully\n";
+        printHeader("EXPORT REPORT");
+        cout<<"Report Saved Successfully\n";
     }
 
     //-------------------------------------------------
@@ -1001,8 +1008,7 @@ public:
 
     void lastTenRecords()
     {
-        cout << "\nLast 10 Trading Days\n";
-        cout << "---------------------------\n";
+        printHeader("LAST 10 TRADING DAYS");
         int start = max(0, (int)stocks.size() - 10);
         for (int i = start; i < stocks.size(); i++)
         {
@@ -1018,26 +1024,26 @@ public:
     //-------------------------------------------------
     void displayMenu() const
     {
-        cout << "\n========== STOCK PREDICTION SYSTEM MENU ==========\n";
-        cout << " 1.  Display All Records\n";
+        cout << "\n==================== MENU ========================\n";
+        cout << " 1.  View All Records\n";
         cout << " 2.  Search by Date\n";
         cout << " 3.  Moving Average\n";
-        cout << " 4.  Statistics\n";
+        cout << " 4.  View Statistics\n";
         cout << " 5.  Highest Closing Prices\n";
         cout << " 6.  Lowest Closing Prices\n";
-        cout << " 7.  Daily Change Analysis\n";
-        cout << " 8.  Predict Next Day\n";
-        cout << " 9.  Trend Analysis\n";
-        cout << "10.  Calculate Volatility\n";
-        cout << "11.  Best/Worst Trading Day\n";
-        cout << "12.  Consecutive Trend Analysis\n";
-        cout << "13.  Sort by Closing Price\n";
+        cout << " 7.  Daily Change\n";
+        cout << " 8.  Predict Price\n";
+        cout << " 9.  Market Trend\n";
+        cout << "10.  Volatility\n";
+        cout << "11.  Best/Worst Day\n";
+        cout << "12.  Trend Analysis\n";
+        cout << "13.  Sort by Close\n";
         cout << "14.  Sort by Volume\n";
         cout << "15.  Highest Volume Day\n";
         cout << "16.  Lowest Volume Day\n";
         cout << "17.  Top Gainers\n";
         cout << "18.  Top Losers\n";
-        cout << "19.  Recommendation Score\n";
+        cout << "19.  Recommendation\n";
         cout << "20.  Export Report\n";
         cout << "21.  Last 10 Records\n";
         cout << "22.  Exit\n";
@@ -1049,141 +1055,65 @@ public:
 //-------------------------------------------------
 // Main Function
 //-------------------------------------------------
+
+
 int main()
 {
     StockPredictionSystem sps;
-    string filename = "stock_data.csv";
-    if (!sps.loadCSV(filename))
+
+    if (!sps.loadCSV("stock_data.csv"))
     {
-        cout << "\nExiting - Could not load stock data.\n";
+        std::cerr << "Failed to load stock_data.csv" << std::endl;
         return 1;
     }
 
-    int choice = 0;
-    do
-    {
-        sps.displayMenu();
-        cin >> choice;
-        if (cin.fail())
+    crow::SimpleApp app;
+
+    CROW_ROUTE(app, "/")([] {
+        return "Stock Prediction System API is running.";
+    });
+
+    CROW_ROUTE(app, "/statistics")([&sps] {
+        crow::response res;
+        res.set_header("Content-Type", "application/json");
+        res.write(sps.statisticsJSON());
+        return res;
+    });
+
+    CROW_ROUTE(app, "/prediction")([&sps] {
+        crow::response res;
+        res.set_header("Content-Type", "application/json");
+        res.write(sps.predictionJSON());
+        return res;
+    });
+
+    CROW_ROUTE(app, "/records")([&sps] {
+        std::ostringstream out;
+        out << "[";
+        const auto& records = sps.getAllRecords();
+        for (size_t i = 0; i < records.size(); ++i)
         {
-            cin.clear();
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            cout << "\nInvalid input. Please enter a number between 1 and 22.\n";
-            continue;
+            const auto& r = records[i];
+            out << "{"
+                << "\"date\":\"" << r.date << "\"," 
+                << "\"open\":" << r.open << ","
+                << "\"high\":" << r.high << ","
+                << "\"low\":" << r.low << ","
+                << "\"close\":" << r.close << ","
+                << "\"volume\":" << r.volume
+                << "}";
+            if (i + 1 != records.size()) out << ",";
         }
-        switch (choice)
-        {
-            case 1:
-                sps.displayAllStocks();
-                break;
-            case 2:
-            {
-                cout << "\nEnter date (YYYY-MM-DD): ";
-                string date;
-                cin >> date;
-                sps.searchByDate(date);
-                break;
-            }
-            case 3:
-            {
-                cout << "\nEnter period for moving average: ";
-                int period;
-                cin >> period;
-                if (cin.fail() || period <= 0)
-                {
-                    cin.clear();
-                    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    cout << "\nInvalid period entered.\n";
-                    break;
-                }
-                sps.displayMovingAverage(period);
-                break;
-            }
-            case 4:
-                sps.displayStatistics();
-                break;
-            case 5:
-            {
-                cout << "\nHow many top highest closing prices? ";
-                int n;
-                cin >> n;
-                if (cin.fail() || n <= 0)
-                {
-                    cin.clear();
-                    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    cout << "\nInvalid number entered.\n";
-                    break;
-                }
-                sps.highestClosingPrices(n);
-                break;
-            }
-            case 6:
-            {
-                cout << "\nHow many lowest closing prices? ";
-                int n;
-                cin >> n;
-                if (cin.fail() || n <= 0)
-                {
-                    cin.clear();
-                    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    cout << "\nInvalid number entered.\n";
-                    break;
-                }
-                sps.lowestClosingPrices(n);
-                break;
-            }
-            case 7:
-                sps.dailyChangeAnalysis();
-                break;
-            case 8:
-                sps.predictNextDay();
-                break;
-            case 9:
-                sps.analyzeTrend();
-                break;
-            case 10:
-                sps.calculateVolatility();
-                break;
-            case 11:
-                sps.bestWorstDay();
-                break;
-            case 12:
-                sps.consecutiveTrend();
-                break;
-            case 13:
-                sps.sortByClosingPrice();
-                break;
-            case 14:
-                sps.sortByVolume();
-                break;
-            case 15:
-                sps.highestVolumeDay();
-                break;
-            case 16:
-                sps.lowestVolumeDay();
-                break;
-            case 17:
-                sps.topGainers();
-                break;
-            case 18:
-                sps.topLosers();
-                break;
-            case 19:
-                sps.recommendationScore();
-                break;
-            case 20:
-                sps.exportReport();
-                break;
-            case 21:
-                sps.lastTenRecords();
-                break;
-            case 22:
-                cout << "\nThank you for using Stock Prediction System. Goodbye!\n";
-                break;
-            default:
-                cout << "\nInvalid choice. Please select a valid menu option (1-22).\n";
-                break;
-        }
-    } while (choice != 22);
+        out << "]";
+        crow::response res;
+        res.set_header("Content-Type", "application/json");
+        res.write(out.str());
+        return res;
+    });
+
+    std::cout << "Server running at http://localhost:18080" << std::endl;
+
+    app.port(18080).multithreaded().run();
+
     return 0;
 }
