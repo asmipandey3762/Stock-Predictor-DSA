@@ -11,7 +11,9 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+
 #include <chrono>
+#include <cstdlib>
 
 #include <crow.h>
 
@@ -269,24 +271,24 @@ public:
         }
         cout << "\n";
         cout << left
-             << setw(15) << "Date"
-             << setw(12) << "Open"
-             << setw(12) << "High"
-             << setw(12) << "Low"
-             << setw(12) << "Close"
-             << setw(15) << "Volume" << endl;
+            << setw(15) << "Date"
+            << setw(12) << "Open"
+            << setw(12) << "High"
+            << setw(12) << "Low"
+            << setw(12) << "Close"
+            << setw(15) << "Volume" << endl;
         cout << string(78, '-') << endl;
         cout << fixed << setprecision(2);
         for (const auto& s : stocks)
         {
             cout << left
-                 << setw(15) << s.date
-                 << setw(12) << s.open
-                 << setw(12) << s.high
-                 << setw(12) << s.low
-                 << setw(12) << s.close
-                 << setw(15) << s.volume
-                 << endl;
+                << setw(15) << s.date
+                << setw(12) << s.open
+                << setw(12) << s.high
+                << setw(12) << s.low
+                << setw(12) << s.close
+                << setw(15) << s.volume
+                << endl;
         }
     }
 
@@ -303,11 +305,11 @@ public:
         const StockRecord& s = stocks[it->second];
         cout << fixed << setprecision(2);
         cout << "\nDate   : " << s.date << '\n'
-             << "Open   : " << s.open << '\n'
-             << "High   : " << s.high << '\n'
-             << "Low    : " << s.low << '\n'
-             << "Close  : " << s.close << '\n'
-             << "Volume : " << s.volume << endl;
+            << "Open   : " << s.open << '\n'
+            << "High   : " << s.high << '\n'
+            << "Low    : " << s.low << '\n'
+            << "Close  : " << s.close << '\n'
+            << "Volume : " << s.volume << endl;
     }
 
     // Return number of loaded records
@@ -735,7 +737,7 @@ public:
         for(int i = 1; i < stocks.size(); i++)
         {
             if(stocks[i].close >
-               stocks[i-1].close)
+                stocks[i-1].close)
             {
                 gain++;
                 loss = 0;
@@ -1013,9 +1015,9 @@ public:
         for (int i = start; i < stocks.size(); i++)
         {
             cout << stocks[i].date
-                 << "  "
-                 << stocks[i].close
-                 << endl;
+                << "  "
+                << stocks[i].close
+                << endl;
         }
     }
 
@@ -1113,7 +1115,14 @@ int main()
 
     std::cout << "Server running at http://localhost:18080" << std::endl;
 
-    app.port(18080).multithreaded().run();
+    int port = 18080;
+
+    if (const char* env = std::getenv("PORT"))
+    {
+        port = std::stoi(env);
+    }
+
+    app.port(port).multithreaded().run();
 
     return 0;
 }
